@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Rekisteröidy</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="username">Käyttäjänimi</label>
+    <input type="text" id="username" name="username" required>
+    <label for="password">Salasana</label>
+    <input type="password" id="password" name="password" required>
+    <button type="submit">Luo tunnus</button>
+  </form>
+{% endblock %}
