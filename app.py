@@ -1,4 +1,5 @@
 import sys
+import os
 import sqlite3
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
@@ -7,8 +8,9 @@ from flask_wtf.csrf import CSRFProtect
 import config
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = config.SECRET_KEY
-app.config['DATABASE'] = config.DATABASE
+# Use values from config.py when present, otherwise fall back to environment or sensible defaults
+app.config['SECRET_KEY'] = getattr(config, 'SECRET_KEY', os.environ.get('SECRET_KEY', 'dev-secret-key'))
+app.config['DATABASE'] = getattr(config, 'DATABASE', os.environ.get('DATABASE', 'database.db'))
 csrf = CSRFProtect(app)
 
 
