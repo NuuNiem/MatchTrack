@@ -4,14 +4,28 @@ import sqlite3
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_wtf.csrf import CSRFProtect
+import secrets
 import config
 
 app = Flask(__name__)
-# Use values from config.py when present, otherwise fall back to environment or sensible defaults
 app.config['SECRET_KEY'] = getattr(config, 'SECRET_KEY', os.environ.get('SECRET_KEY', 'dev-secret-key'))
 app.config['DATABASE'] = getattr(config, 'DATABASE', os.environ.get('DATABASE', 'database.db'))
-csrf = CSRFProtect(app)
+
+@app.before_request
+def ensure_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(16)
+
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=lambda: session.get('csrf_token', ''))
+
+def validate_csrf():
+    token = request.form.get('csrf_token')
+    if not token or token != session.get('csrf_token'):
+        flash('Invalid CSRF token')
+        return False
+    return True
 
 
 def get_db():
@@ -47,6 +61,8 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
+        if not validate_csrf():
+            return render_template('register.html')
         username = request.form['username'].strip()
         password = request.form['password']
         if not username or not password:
@@ -72,6 +88,8 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        if not validate_csrf():
+            return render_template('login.html')
         username = request.form['username'].strip()
         password = request.form['password']
         if not username or not password:
@@ -123,6 +141,8 @@ def items():
 @login_required
 def new_item():
     if request.method == 'POST':
+        if not validate_csrf():
+            return render_template('new_item.html')
         title = request.form['title'].strip()
         description = request.form.get('description', '').strip()
         if not title:
@@ -154,6 +174,8 @@ def edit_item(item_id):
         return redirect(url_for('items'))
 
     if request.method == 'POST':
+        if not validate_csrf():
+            return render_template('edit_item.html', item=item)
         title = request.form['title'].strip()
         description = request.form.get('description', '').strip()
         if not title:
@@ -182,6 +204,10 @@ def delete_item(item_id):
 
     if item['owner_id'] != session['user_id']:
         flash('You are not the owner of this item')
+        return redirect(url_for('items'))
+
+    # Validate CSRF for destructive action
+    if not validate_csrf():
         return redirect(url_for('items'))
 
     db.execute('DELETE FROM item WHERE id = ?', (item_id,))

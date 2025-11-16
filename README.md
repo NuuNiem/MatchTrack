@@ -29,7 +29,7 @@ source .venv/bin/activate
 Asenna flask-kirjasto:
 
 ```bash
-pip install Flask Flask-WTF
+pip install Flask
 ```
 
 Luo tietokannan taulut ja lisää alkutiedot:
