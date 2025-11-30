@@ -1,31 +1,17 @@
 import sys
 import os
 import sqlite3
-from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g
-from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
+from flask import Flask, session, g
+from werkzeug.security import generate_password_hash
 import config
+from routes import init_routes
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = getattr(config, 'SECRET_KEY', os.environ.get('SECRET_KEY', 'dev-secret-key'))
-app.config['DATABASE'] = getattr(config, 'DATABASE', os.environ.get('DATABASE', 'database.db'))
-
-@app.before_request
-def ensure_csrf_token():
-    if 'csrf_token' not in session:
-        session['csrf_token'] = secrets.token_hex(16)
-
-@app.context_processor
-def inject_csrf_token():
-    return dict(csrf_token=lambda: session.get('csrf_token', ''))
-
-def validate_csrf():
-    token = request.form.get('csrf_token')
-    if not token or token != session.get('csrf_token'):
-        flash('Invalid CSRF token')
-        return False
-    return True
+app.config['SECRET_KEY'] = getattr(
+    config, 'SECRET_KEY', os.environ.get('SECRET_KEY', 'dev-secret-key'))
+app.config['DATABASE'] = getattr(
+    config, 'DATABASE', os.environ.get('DATABASE', 'database.db'))
 
 
 def get_db():
@@ -36,184 +22,16 @@ def get_db():
 
 
 @app.teardown_appcontext
-def close_db(error=None):
+def close_db(error=None):  # pylint: disable=unused-argument
     db = g.pop('db', None)
     if db is not None:
         db.close()
 
 
-def login_required(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Please log in to continue')
-            return redirect(url_for('login'))
-        return func(*args, **kwargs)
-
-    return wrapper
+# Alusta reitit
+init_routes(app, get_db)
 
 
-@app.route('/')
-def index():
-    return redirect(url_for('items'))
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        if not validate_csrf():
-            return render_template('register.html')
-        username = request.form['username'].strip()
-        password = request.form['password']
-        if not username or not password:
-            flash('Username and password required')
-            return render_template('register.html')
-
-        db = get_db()
-        user = db.execute('SELECT id FROM user WHERE username = ?',
-                         (username,)).fetchone()
-        if user:
-            flash('Username already taken')
-            return render_template('register.html')
-
-        password_hash = generate_password_hash(password)
-        db.execute('INSERT INTO user (username, password_hash) VALUES (?, ?)',
-                   (username, password_hash))
-        db.commit()
-        flash('Account created. Please log in.')
-        return redirect(url_for('login'))
-    return render_template('register.html')
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        if not validate_csrf():
-            return render_template('login.html')
-        username = request.form['username'].strip()
-        password = request.form['password']
-        if not username or not password:
-            flash('Username and password required')
-            return render_template('login.html')
-
-        db = get_db()
-        user = db.execute(
-            'SELECT id, username, password_hash FROM user WHERE username = ?',
-            (username,)).fetchone()
-
-        if user and check_password_hash(user['password_hash'], password):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            flash('Logged in successfully')
-            return redirect(url_for('items'))
-        flash('Invalid username or password')
-        return render_template('login.html')
-    return render_template('login.html')
-
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('Logged out successfully')
-    return redirect(url_for('login'))
-
-
-@app.route('/items')
-def items():
-    q = request.args.get('q', '').strip()
-    db = get_db()
-
-    if q:
-        like = f"%{q}%"
-        items_list = db.execute('''
-            SELECT id, title, description, owner_id
-            FROM item
-            WHERE title LIKE ? OR description LIKE ?
-            ORDER BY id DESC
-        ''', (like, like)).fetchall()
-    else:
-        items_list = db.execute(
-            'SELECT id, title, description, owner_id FROM item ORDER BY id DESC'
-        ).fetchall()
-
-    return render_template('index.html', items=items_list, q=q)
-@app.route('/items/new', methods=['GET', 'POST'])
-@login_required
-def new_item():
-    if request.method == 'POST':
-        if not validate_csrf():
-            return render_template('new_item.html')
-        title = request.form['title'].strip()
-        description = request.form.get('description', '').strip()
-        if not title:
-            flash('Title is required')
-            return render_template('new_item.html')
-
-        db = get_db()
-        db.execute(
-            'INSERT INTO item (title, description, owner_id) VALUES (?, ?, ?)',
-            (title, description, session['user_id']))
-        db.commit()
-        flash('Item added successfully')
-        return redirect(url_for('items'))
-    return render_template('new_item.html')
-@app.route('/items/<int:item_id>/edit', methods=['GET', 'POST'])
-@login_required
-def edit_item(item_id):
-    db = get_db()
-    item = db.execute(
-        'SELECT id, title, description, owner_id FROM item WHERE id = ?',
-        (item_id,)).fetchone()
-
-    if not item:
-        flash('Item not found')
-        return redirect(url_for('items'))
-
-    if item['owner_id'] != session['user_id']:
-        flash('You are not the owner of this item')
-        return redirect(url_for('items'))
-
-    if request.method == 'POST':
-        if not validate_csrf():
-            return render_template('edit_item.html', item=item)
-        title = request.form['title'].strip()
-        description = request.form.get('description', '').strip()
-        if not title:
-            flash('Title is required')
-            return render_template('edit_item.html', item=item)
-
-        db.execute(
-            'UPDATE item SET title = ?, description = ? WHERE id = ?',
-            (title, description, item_id))
-        db.commit()
-        flash('Item updated successfully')
-        return redirect(url_for('items'))
-
-    return render_template('edit_item.html', item=item)
-@app.route('/items/<int:item_id>/delete', methods=['POST'])
-@login_required
-def delete_item(item_id):
-    db = get_db()
-    item = db.execute(
-        'SELECT id, owner_id FROM item WHERE id = ?',
-        (item_id,)).fetchone()
-
-    if not item:
-        flash('Item not found')
-        return redirect(url_for('items'))
-
-    if item['owner_id'] != session['user_id']:
-        flash('You are not the owner of this item')
-        return redirect(url_for('items'))
-
-    # Validate CSRF for destructive action
-    if not validate_csrf():
-        return redirect(url_for('items'))
-
-    db.execute('DELETE FROM item WHERE id = ?', (item_id,))
-    db.commit()
-    flash('Item deleted successfully')
-    return redirect(url_for('items'))
 def init_db():
     with app.app_context():
         db = get_db()
@@ -246,10 +64,21 @@ def seed_db():
 
         user_id = user['id']
 
-        item_count = db.execute(
-            'SELECT COUNT(*) as count FROM item').fetchone()['count']
-        if item_count == 0:
-            sample_items = [
+        cat_count = db.execute(
+            'SELECT COUNT(*) as count FROM category').fetchone()['count']
+        if cat_count == 0:
+            sample_categories = ['Liiga', 'Cupin ottelu', 'Harjoituspeli', 'Ystävyysottelu']
+            for cat_name in sample_categories:
+                db.execute('INSERT INTO category (name) VALUES (?)', (cat_name,))
+            db.commit()
+            print(f'Added {len(sample_categories)} sample categories')
+        else:
+            print('Categories already present; skipping sample data')
+
+        match_count = db.execute(
+            'SELECT COUNT(*) as count FROM match').fetchone()['count']
+        if match_count == 0:
+            sample_matches = [
                 ('HJK - FC Inter', 'Jännittävä kotipeli, voitto viime hetkillä',
                  user_id),
                 ('IFK Mariehamn - HJK', 'Vieraspeli Maarianhaminassa, tasapeli',
@@ -257,14 +86,14 @@ def seed_db():
                 ('HJK - KuPS', 'Liigaottelu Töölössä, hyvä tunnelma stadionilla',
                  user_id)
             ]
-            for title, description, owner_id in sample_items:
+            for title, description, owner_id in sample_matches:
                 db.execute(
-                    'INSERT INTO item (title, description, owner_id) VALUES (?, ?, ?)',
+                    'INSERT INTO match (title, description, owner_id) VALUES (?, ?, ?)',
                     (title, description, owner_id))
             db.commit()
-            print('Added 3 sample items')
+            print('Added 3 sample matches')
         else:
-            print('Items already present; skipping sample data')
+            print('Matches already present; skipping sample data')
 
 
 if __name__ == '__main__':
