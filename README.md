@@ -7,39 +7,34 @@ Sovellus, jolla voi seurata käymiään jalkapallo-otteluita.
 
 - Käyttäjä pystyy luomaan tunnuksen ja kirjautumaan sisään sovellukseen. *valmis*
 - Käyttäjä pystyy lisäämään, muokkaamaan ja poistamaan otteluita, joita on käynyt katsomassa. *valmis*
-- Käyttäjä pystyy lisäämään ottelulle tietoja, kuten päivämäärän, vastustajan, tuloksen, sijainnin ja mahdollisia muistiinpanoja ottelusta. *kesken*
+- Käyttäjä pystyy valitsemaan ottelulle yhden tai useamman kategorian (Liiga, Cupin ottelu, Harjoituspeli, Ystävyysottelu). *valmis*
 - Käyttäjä näkee sovellukseen lisäämänsä ottelut listana. *valmis*
-- Käyttäjä pystyy etsimään ja suodattamaan otteluita vastustajan, päivämäärän tai sijainnin perusteella. *valmis*
-- Sovelluksessa on käyttäjäsivu, joka näyttää tilastoja, kuten katsottujen otteluiden lukumäärän, suosituimmat joukkueet ja käyntimäärän eri stadioneilla. *ei toteutettu*
-- Käyttäjä pystyy tarkastelemaan tilastoja myös graafisessa muodossa. *ei toteutettu*
+- Käyttäjä pystyy etsimään otteluita otsikon tai kuvauksen perusteella. *valmis*
+- Käyttäjä pystyy kommentoimaan toisten käyttäjien otteluita. *valmis*
+- Sovelluksessa on käyttäjäsivu, joka näyttää tilastoja (lisättyjen otteluiden ja kommenttien määrä). *valmis*
 - Sovellus tallentaa tiedot tietokantaan ja näyttää ne käyttäjäkohtaisesti. *valmis*
 
 ## Sovelluksen asennus
 
-Aktivoi virtuaaliympäristö:
-
-```bash
-python3 -m venv .venv
-```
-
-```bash
-source .venv/bin/activate
-```
-
-Asenna flask-kirjasto:
+Asenna Flask:
 
 ```bash
 pip install Flask
 ```
 
-Luo tietokannan taulut ja lisää alkutiedot:
+Alusta tietokanta:
 
 ```bash
-sqlite3 database.db < schema.sql
-sqlite3 database.db < init.sql
+python3 app.py init-db
 ```
 
-Voit käynnistää sovelluksen näin:
+Lisää esimerkkitiedot (vapaaehtoinen):
+
+```bash
+python3 app.py seed-db
+```
+
+Käynnistä sovellus:
 
 ```bash
 flask run
