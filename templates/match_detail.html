@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>{{ match.title }}</h2>
+
+  <div style="white-space: pre-wrap;">{{ match.description }}</div>
+
+  {% if categories %}
+    <p><strong>Kategoriat:</strong> {{ categories }}</p>
+  {% endif %}
+
+  <p><strong>Omistaja:</strong> <a href="{{ url_for('user_profile', user_id=match.owner_id) }}">{{ match.username }}</a></p>
+
+  {% if session.get('user_id') and session.get('user_id') == match.owner_id %}
+    <div>
+      <a href="{{ url_for('edit_match', match_id=match.id) }}">Muokkaa</a>
+      <form action="{{ url_for('delete_match', match_id=match.id) }}" method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+        <button type="submit" onclick="return confirm('Poistetaanko?')">Poista</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <hr>
+
+  <h3>Kommentit</h3>
+  {% if comments %}
+    <ul>
+      {% for c in comments %}
+        <li>
+          <strong>{{ c.username }}</strong> (<small>{{ c.created_at }}</small>)
+          <div style="white-space: pre-wrap;">{{ c.content }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Ei kommentteja.</p>
+  {% endif %}
+
+  {% if session.get('user_id') %}
+    <h4>Lisää kommentti</h4>
+    <form method="post" action="{{ url_for('add_comment', match_id=match.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+      <textarea name="content" placeholder="Kirjoita kommenttisi..." required></textarea>
+      <button type="submit">Lähetä kommentti</button>
+    </form>
+  {% else %}
+    <p><a href="{{ url_for('login') }}">Kirjaudu sisään</a> lisätäksesi kommentin.</p>
+  {% endif %}
+
+  <p><a href="{{ url_for('matches') }}">Takaisin otteluihin</a></p>
+{% endblock %}

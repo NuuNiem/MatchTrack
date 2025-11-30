@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Käyttäjä: {{ user.username }}</h2>
+
+  <div>
+    <p><strong>Tilastot:</strong></p>
+    <ul>
+      <li>Otteluita lisätty: {{ match_count }}</li>
+      <li>Kommentteja: {{ comment_count }}</li>
+    </ul>
+  </div>
+
+  <h3>Käyttäjän ottelut</h3>
+  {% if user_matches %}
+    <ul>
+      {% for match in user_matches %}
+        <li>
+          <strong>{{ match.title }}</strong>
+          <div style="white-space: pre-wrap;">{{ match.description }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Ei otteluita.</p>
+  {% endif %}
+{% endblock %}

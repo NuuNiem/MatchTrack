@@ -3,25 +3,28 @@
 {% block content %}
   <h2>Ottelut</h2>
 
-  <form method="get" action="{{ url_for('items') }}">
+  <form method="get" action="{{ url_for('matches') }}">
     <label for="q">Haku</label>
     <input type="text" id="q" name="q" placeholder="Hae otsikolla tai kuvauksella" value="{{ q }}">
     <button type="submit">Hae</button>
-    {% if q %}<a href="{{ url_for('items') }}">Tyhjennä</a>{% endif %}
+    {% if q %}<a href="{{ url_for('matches') }}">Tyhjennä</a>{% endif %}
   </form>
 
-  {% if items %}
+  {% if matches %}
     <ul>
-      {% for it in items %}
+      {% for match in matches %}
         <li>
-          <strong>{{ it.title }}</strong>
-          <div style="white-space: pre-wrap;">{{ it.description }}</div>
-          <small>Omistaja: {{ it.owner_id }}</small>
-          {% if session.get('user_id') and session.get('user_id') == it.owner_id %}
+          <strong><a href="{{ url_for('match_detail', match_id=match.id) }}">{{ match.title }}</a></strong>
+          <div style="white-space: pre-wrap;">{{ match.description }}</div>
+          {% if match.categories %}
+            <small>Kategoriat: {{ match.categories }}</small>
+          {% endif %}
+          <small>Omistaja: <a href="{{ url_for('user_profile', user_id=match.owner_id) }}">{{ match.username }}</a></small>
+          {% if session.get('user_id') and session.get('user_id') == match.owner_id %}
             <div>
-              <a href="{{ url_for('edit_item', item_id=it.id) }}">Muokkaa</a>
-              <form action="{{ url_for('delete_item', item_id=it.id) }}" method="post" style="display:inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <a href="{{ url_for('edit_match', match_id=match.id) }}">Muokkaa</a>
+              <form action="{{ url_for('delete_match', match_id=match.id) }}" method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
                 <button type="submit" onclick="return confirm('Poistetaanko?')">Poista</button>
               </form>
             </div>

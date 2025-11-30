@@ -3,11 +3,22 @@
 {% block content %}
   <h2>Uusi ottelu</h2>
   <form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
     <label for="title">Otsikko</label>
     <input type="text" id="title" name="title" required>
     <label for="description">Kuvaus</label>
     <textarea id="description" name="description"></textarea>
+
+    <fieldset>
+      <legend>Kategoriat</legend>
+      {% for cat in categories %}
+        <label>
+          <input type="checkbox" name="categories" value="{{ cat.id }}">
+          {{ cat.name }}
+        </label><br>
+      {% endfor %}
+    </fieldset>
+
     <button type="submit">Tallenna</button>
   </form>
 {% endblock %}
