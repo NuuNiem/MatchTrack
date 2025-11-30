@@ -28,7 +28,7 @@ Alusta tietokanta:
 python3 app.py init-db
 ```
 
-Lisää esimerkkitiedot (vapaaehtoinen):
+Lisää esimerkkidata halutessasi:
 
 ```bash
 python3 app.py seed-db
