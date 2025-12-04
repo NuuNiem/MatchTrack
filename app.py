@@ -28,6 +28,12 @@ def close_db(error=None):  # pylint: disable=unused-argument
         db.close()
 
 
+@app.before_request
+def csrf_protect():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(16)
+
+
 # Alusta reitit
 init_routes(app, get_db)
 
