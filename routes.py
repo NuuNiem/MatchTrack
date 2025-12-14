@@ -1,4 +1,3 @@
-import secrets
 from functools import wraps
 from flask import render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -31,8 +30,18 @@ def init_routes(app, get_db):
             check_csrf()
             username = request.form['username'].strip()
             password = request.form['password']
+            password2 = request.form.get('password2', '')
+
             if not username or not password:
                 flash('Username and password required')
+                return render_template('register.html')
+
+            if len(password) < 8:
+                flash('Password must be at least 8 characters long')
+                return render_template('register.html')
+
+            if password != password2:
+                flash('Passwords do not match')
                 return render_template('register.html')
 
             db = get_db()
@@ -83,26 +92,45 @@ def init_routes(app, get_db):
     @app.route('/matches')
     def matches():
         q = request.args.get('q', '').strip()
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        offset = (page - 1) * per_page
+
         db = get_db()
 
         if q:
             like = f"%{q}%"
             matches_list = db.execute('''
-                SELECT match.id, match.title, match.description, match.owner_id, user.username
+                SELECT match.id, match.title, match.description, match.date,
+                       match.opponent, match.result, match.location,
+                       match.owner_id, user.username
                 FROM match
                 JOIN user ON match.owner_id = user.id
                 WHERE match.title LIKE ? OR match.description LIKE ?
-                ORDER BY match.id DESC
-            ''', (like, like)).fetchall()
+                ORDER BY match.date DESC, match.id DESC
+                LIMIT ? OFFSET ?
+            ''', (like, like, per_page, offset)).fetchall()
+
+            total = db.execute('''
+                SELECT COUNT(*) as count FROM match
+                WHERE title LIKE ? OR description LIKE ?
+            ''', (like, like)).fetchone()['count']
         else:
             matches_list = db.execute('''
-                SELECT match.id, match.title, match.description, match.owner_id, user.username
+                SELECT match.id, match.title, match.description, match.date,
+                       match.opponent, match.result, match.location,
+                       match.owner_id, user.username
                 FROM match
                 JOIN user ON match.owner_id = user.id
-                ORDER BY match.id DESC
-            ''').fetchall()
+                ORDER BY match.date DESC, match.id DESC
+                LIMIT ? OFFSET ?
+            ''', (per_page, offset)).fetchall()
 
-        return render_template('index.html', matches=matches_list, q=q)
+            total = db.execute('SELECT COUNT(*) as count FROM match').fetchone()['count']
+
+        total_pages = (total + per_page - 1) // per_page
+        return render_template('index.html', matches=matches_list, q=q,
+                               page=page, total_pages=total_pages)
 
     @app.route('/matches/new', methods=['GET', 'POST'])
     @login_required
@@ -114,16 +142,22 @@ def init_routes(app, get_db):
             check_csrf()
             title = request.form['title'].strip()
             description = request.form.get('description', '').strip()
+            date = request.form.get('date', '').strip()
+            opponent = request.form.get('opponent', '').strip()
+            result = request.form.get('result', '').strip()
+            location = request.form.get('location', '').strip()
+            custom_category = request.form.get('custom_category', '').strip()
             if not title:
                 flash('Title is required')
                 return render_template('new_match.html', categories=categories)
 
             cursor = db.execute(
-                'INSERT INTO match (title, description, owner_id) VALUES (?, ?, ?)',
-                (title, description, session['user_id']))
+                '''INSERT INTO match (title, description, date, opponent, result, location,
+                   custom_category, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                (title, description, date, opponent, result, location,
+                 custom_category, session['user_id']))
             match_id = cursor.lastrowid
 
-            # Save selected categories
             selected_categories = request.form.getlist('categories')
             for cat_id in selected_categories:
                 db.execute(
@@ -140,7 +174,8 @@ def init_routes(app, get_db):
     def edit_match(match_id):
         db = get_db()
         match = db.execute(
-            'SELECT id, title, description, owner_id FROM match WHERE id = ?',
+            '''SELECT id, title, description, date, opponent, result, location,
+               custom_category, owner_id FROM match WHERE id = ?''',
             (match_id,)).fetchone()
 
         if not match:
@@ -162,6 +197,11 @@ def init_routes(app, get_db):
             check_csrf()
             title = request.form['title'].strip()
             description = request.form.get('description', '').strip()
+            date = request.form.get('date', '').strip()
+            opponent = request.form.get('opponent', '').strip()
+            result = request.form.get('result', '').strip()
+            location = request.form.get('location', '').strip()
+            custom_category = request.form.get('custom_category', '').strip()
             if not title:
                 flash('Title is required')
                 return render_template('edit_match.html', match=match,
@@ -169,10 +209,11 @@ def init_routes(app, get_db):
                                        selected_categories=selected_categories)
 
             db.execute(
-                'UPDATE match SET title = ?, description = ? WHERE id = ?',
-                (title, description, match_id))
+                '''UPDATE match SET title = ?, description = ?, date = ?, opponent = ?,
+                   result = ?, location = ?, custom_category = ? WHERE id = ?''',
+                (title, description, date, opponent, result, location,
+                 custom_category, match_id))
 
-            # Update categories: delete old, insert new
             db.execute('DELETE FROM match_category WHERE match_id = ?', (match_id,))
             selected_cats = request.form.getlist('categories')
             for cat_id in selected_cats:
@@ -191,7 +232,9 @@ def init_routes(app, get_db):
     def match_detail(match_id):
         db = get_db()
         match = db.execute('''
-            SELECT match.id, match.title, match.description, match.owner_id, user.username
+            SELECT match.id, match.title, match.description, match.date, match.opponent,
+                   match.result, match.location, match.custom_category,
+                   match.owner_id, user.username
             FROM match
             JOIN user ON match.owner_id = user.id
             WHERE match.id = ?
@@ -201,7 +244,6 @@ def init_routes(app, get_db):
             flash('Ottelua ei löytynyt')
             return redirect(url_for('matches'))
 
-        # Get categories
         categories = db.execute('''
             SELECT category.name
             FROM category
@@ -210,41 +252,16 @@ def init_routes(app, get_db):
         ''', (match_id,)).fetchall()
         cat_names = ', '.join([c['name'] for c in categories])
 
-        # Get comments
         comments = db.execute('''
-            SELECT comment.id, comment.content, comment.created_at, user.username
+            SELECT comment.content, comment.created_at, user.username
             FROM comment
             JOIN user ON comment.user_id = user.id
             WHERE comment.match_id = ?
-            ORDER BY comment.created_at DESC
+            ORDER BY comment.created_at ASC
         ''', (match_id,)).fetchall()
 
         return render_template('match_detail.html',
                                match=match, categories=cat_names, comments=comments)
-
-    @app.route('/matches/<int:match_id>/comment', methods=['POST'])
-    @login_required
-    def add_comment(match_id):
-        check_csrf()
-
-        content = request.form.get('content', '').strip()
-        if not content:
-            flash('Kommentti ei voi olla tyhjä')
-            return redirect(url_for('match_detail', match_id=match_id))
-
-        db = get_db()
-        # Check match exists
-        match = db.execute('SELECT id FROM match WHERE id = ?', (match_id,)).fetchone()
-        if not match:
-            flash('Ottelua ei löytynyt')
-            return redirect(url_for('matches'))
-
-        db.execute(
-            'INSERT INTO comment (match_id, user_id, content) VALUES (?, ?, ?)',
-            (match_id, session['user_id'], content))
-        db.commit()
-        flash('Kommentti lisätty')
-        return redirect(url_for('match_detail', match_id=match_id))
 
     @app.route('/matches/<int:match_id>/delete', methods=['POST'])
     @login_required
@@ -262,13 +279,34 @@ def init_routes(app, get_db):
             flash('You are not the owner of this match')
             return redirect(url_for('matches'))
 
-        # Validate CSRF for destructive action
         check_csrf()
 
         db.execute('DELETE FROM match WHERE id = ?', (match_id,))
         db.commit()
         flash('Match deleted successfully')
         return redirect(url_for('matches'))
+
+    @app.route('/matches/<int:match_id>/comment', methods=['POST'])
+    @login_required
+    def add_comment(match_id):
+        db = get_db()
+        match = db.execute('SELECT id FROM match WHERE id = ?', (match_id,)).fetchone()
+        if not match:
+            flash('Match not found')
+            return redirect(url_for('matches'))
+
+        check_csrf()
+        content = request.form['content'].strip()
+        if not content:
+            flash('Comment cannot be empty')
+            return redirect(url_for('match_detail', match_id=match_id))
+
+        db.execute(
+            'INSERT INTO comment (match_id, user_id, content) VALUES (?, ?, ?)',
+            (match_id, session['user_id'], content))
+        db.commit()
+        flash('Comment added')
+        return redirect(url_for('match_detail', match_id=match_id))
 
     @app.route('/user/<int:user_id>')
     def user_profile(user_id):
@@ -279,21 +317,16 @@ def init_routes(app, get_db):
             flash('Käyttäjää ei löytynyt')
             return redirect(url_for('matches'))
 
-        # Count matches and comments by user
         match_count = db.execute(
             'SELECT COUNT(*) as count FROM match WHERE owner_id = ?',
             (user_id,)).fetchone()['count']
-        comment_count = db.execute(
-            'SELECT COUNT(*) as count FROM comment WHERE user_id = ?',
-            (user_id,)).fetchone()['count']
 
-        # Get user's matches
         user_matches = db.execute(
-            'SELECT id, title, description FROM match WHERE owner_id = ? ORDER BY id DESC',
+            '''SELECT id, title, description, date, opponent, result, location
+               FROM match WHERE owner_id = ? ORDER BY date DESC, id DESC''',
             (user_id,)).fetchall()
 
         return render_template('user_profile.html',
                                user=user,
                                match_count=match_count,
-                               comment_count=comment_count,
                                user_matches=user_matches)
