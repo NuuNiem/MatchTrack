@@ -26,8 +26,38 @@ form {
 
 input[type=text],
 input[type=password],
+input[type=date],
 textarea {
     width: 100%;
     padding: 8px;
     margin-bottom: 8px;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 8px 16px;
+    margin-top: 8px;
+}
+
+label {
+    display: block;
+    margin-top: 8px;
+    font-weight: bold;
+}
+
+.match-card {
+    border: 1px solid #ddd;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    background-color: #fafafa;
+}
+
+.match-card:hover {
+    background-color: #f0f0f0;
+}
+
+.error {
+    color: #d32f2f;
+    font-size: 0.9em;
 }
