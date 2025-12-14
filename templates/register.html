@@ -6,8 +6,10 @@
     <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
     <label for="username">Käyttäjänimi</label>
     <input type="text" id="username" name="username" required>
-    <label for="password">Salasana</label>
-    <input type="password" id="password" name="password" required>
+    <label for="password">Salasana (vähintään 8 merkkiä)</label>
+    <input type="password" id="password" name="password" minlength="8" required>
+    <label for="password2">Vahvista salasana</label>
+    <input type="password" id="password2" name="password2" minlength="8" required>
     <button type="submit">Luo tunnus</button>
   </form>
 {% endblock %}

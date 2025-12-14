@@ -7,16 +7,19 @@
     <p><strong>Tilastot:</strong></p>
     <ul>
       <li>Otteluita lisätty: {{ match_count }}</li>
-      <li>Kommentteja: {{ comment_count }}</li>
     </ul>
   </div>
 
   <h3>Käyttäjän ottelut</h3>
   {% if user_matches %}
-    <ul>
+    <ul style="list-style: none; padding: 0;">
       {% for match in user_matches %}
-        <li>
-          <strong>{{ match.title }}</strong>
+        <li class="match-card">
+          <strong><a href="{{ url_for('match_detail', match_id=match.id) }}">{{ match.title }}</a></strong>
+          {% if match.date %}<div><small>{{ match.date }}</small></div>{% endif %}
+          {% if match.opponent %}<div><small>Vastustaja: {{ match.opponent }}</small></div>{% endif %}
+          {% if match.result %}<div><small>Tulos: {{ match.result }}</small></div>{% endif %}
+          {% if match.location %}<div><small>{{ match.location }}</small></div>{% endif %}
           <div style="white-space: pre-wrap;">{{ match.description }}</div>
         </li>
       {% endfor %}

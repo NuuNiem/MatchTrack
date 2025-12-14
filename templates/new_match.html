@@ -4,8 +4,21 @@
   <h2>Uusi ottelu</h2>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
-    <label for="title">Otsikko</label>
+    <label for="title">Otsikko *</label>
     <input type="text" id="title" name="title" required>
+    
+    <label for="date">Päivämäärä</label>
+    <input type="date" id="date" name="date">
+    
+    <label for="opponent">Vastustaja</label>
+    <input type="text" id="opponent" name="opponent" placeholder="Esim. HJK">
+    
+    <label for="result">Tulos</label>
+    <input type="text" id="result" name="result" placeholder="Esim. 2-1">
+    
+    <label for="location">Paikka</label>
+    <input type="text" id="location" name="location" placeholder="Esim. Olympiastadion">
+    
     <label for="description">Kuvaus</label>
     <textarea id="description" name="description"></textarea>
 
@@ -17,6 +30,9 @@
           {{ cat.name }}
         </label><br>
       {% endfor %}
+      <br>
+      <label for="custom_category">Muu kategoria (vapaa teksti)</label>
+      <input type="text" id="custom_category" name="custom_category" placeholder="Esim. Kauden avauspeli">
     </fieldset>
 
     <button type="submit">Tallenna</button>

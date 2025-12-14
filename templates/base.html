@@ -12,7 +12,7 @@
       <nav>
         <a href="{{ url_for('matches') }}">Ottelut</a>
         {% if session.get('user_id') %}
-          <span>Kirjautunut: {{ session.get('username') }}</span>
+          <span>Kirjautunut: <a href="{{ url_for('user_profile', user_id=session.get('user_id')) }}">{{ session.get('username') }}</a></span>
           <a href="{{ url_for('new_match') }}">Lisää ottelu</a>
           <a href="{{ url_for('logout') }}">Kirjaudu ulos</a>
         {% else %}

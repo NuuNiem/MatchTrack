@@ -3,10 +3,19 @@
 {% block content %}
   <h2>{{ match.title }}</h2>
 
+  {% if match.date %}<p><strong>Päivämäärä:</strong> {{ match.date }}</p>{% endif %}
+  {% if match.opponent %}<p><strong>Vastustaja:</strong> {{ match.opponent }}</p>{% endif %}
+  {% if match.result %}<p><strong>Tulos:</strong> {{ match.result }}</p>{% endif %}
+  {% if match.location %}<p><strong>Paikka:</strong> {{ match.location }}</p>{% endif %}
+
   <div style="white-space: pre-wrap;">{{ match.description }}</div>
 
   {% if categories %}
     <p><strong>Kategoriat:</strong> {{ categories }}</p>
+  {% endif %}
+
+  {% if match.custom_category %}
+    <p><strong>Muu kategoria:</strong> {{ match.custom_category }}</p>
   {% endif %}
 
   <p><strong>Omistaja:</strong> <a href="{{ url_for('user_profile', user_id=match.owner_id) }}">{{ match.username }}</a></p>
