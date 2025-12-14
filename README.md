@@ -28,12 +28,6 @@ Alusta tietokanta:
 python3 app.py init-db
 ```
 
-Jos päivität olemassa olevan tietokannan, aja myös migraatio:
-
-```bash
-python3 migrate_add_custom_category.py
-```
-
 Lisää testidataa halutessasi:
 
 ```bash
@@ -55,18 +49,3 @@ Sovellus on testattu 1200+ ottelulla:
 ```bash
 python3 test_large_data.py
 ```
-
-**Testitulokset:**
-- Tietokannassa 1261 ottelua
-- Sivutus: 20 ottelua per sivu = 64 sivua
-- COUNT-kysely: 0.19ms
-- Sivutettu kysely (sivu 1): 1.08ms
-- Hakukysely (HJK): 0.18ms
-- Sivutettu kysely (sivu 26): 2.46ms
-
-**Johtopäätökset:**
-- ✅ Kaikki kyselyt suoritetaan alle 50ms:ssa
-- ✅ Indeksit `match.title` ja `match.description` sarakkeissa optimoivat haut
-- ✅ Sivutus estää kaikkien otteluiden lataamisen kerralla
-- ✅ Sovellus toimii hyvin 1200+ ottelulla
-
