@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS match (
     result TEXT,
     location TEXT,
     description TEXT,
+    custom_category TEXT,
     owner_id INTEGER NOT NULL,
     FOREIGN KEY(owner_id) REFERENCES user(id) ON DELETE CASCADE
 );
